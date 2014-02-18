@@ -36,7 +36,13 @@ class Mongo{
     {  
         throw new \Exception("Cloning is not permited");  
     }
-
+    
+    
+    /**
+     * insert a new doc in the collection
+     * @param $data array
+     * @return $this
+     */
     public function insert($data){
         $data['_id'] = new \MongoId();
         $this->collection->insert($data, array("w" => 1));//use w to avoid identical inserts
@@ -44,10 +50,20 @@ class Mongo{
         return $this;
     }
     
+    /**
+     * returns the last inserted document's id
+     * @return MongoId() object
+     */
     public function last_id(){
         return $this->last_insert;
     }
     
+    /**
+     * search a collection
+     * @param $params array fields to search by
+     * @param $fields array, the fields to return
+     * @return $this
+     */
     public function find($params=array(), $fields=null){
         if($fields == null)
             $this->result = $this->collection->find($params);
@@ -55,25 +71,48 @@ class Mongo{
             $this->result = $this->collection->find($params, $fields);
         return $this;
     }
-    
-    public function count($params=array()){
+    /**
+     * returns the last collection search num docs found
+     * @return int
+     */
+    public function count(){
         return $this->collection->count();
     }
     
+    /**
+     * performs a collection select
+     * @return $this
+     */
     public function select($table){
         $this->collection = $this->db->$table;
         return $this;
     }
     
+    /**
+     * search a collection
+     * @param $params array fields to search by
+     * @return $this
+     */
     public function findOne($params = array()){
         $this->result =  $this->collection->findOne($params);
         return $this;
     }
     
+    /**
+     * find docs in a collection and modify them by criteria
+     * @param $query array to search by
+     * @param $update array fields to update
+     * @param $fields array fields to return after update
+     * @return array result set
+     */
     public function findAndModify($query, $update, $fields=array()){
         return $this->collection->findAndModify($query, $update, $fields);
     }
     
+    /**
+     * return the result set after a find or findOne
+     * @return array
+     */
     public function result(){
         $list = array();
         while($this->result->hasNext()){
@@ -82,11 +121,12 @@ class Mongo{
         return $list;
     }
     
-    public function update($params=array()){
-        $this->collection->update($params);
-        return $this;
-    }
     
+    /**
+     * removes documents based on $params from a collection
+     * @param $params array with the criteria to remove by
+     * @return $this
+     */    
     public function remove($params=array()){
         $this->collection->remove($params);
         return $this;
