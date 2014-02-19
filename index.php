@@ -16,17 +16,27 @@ $mdb = new \Database\MySqli($config['mysql']['hostbase'],
                             
 //DO A LITTLE MONGO TEST
 
-//select a collection, insert some data, retrieve the inserted id
-$id = $db->select("test")->insert(array("title"=>"Test Insert", "data"=>12345))->last_id();
-
-echo "INSERT ID:" .$id->__toString();
-//select all results in the last selected collection
-$result = $db->find()->result();
-echo "<br/>RESULT:<br/>";
+// $cid = $db->select("apps")->insert(array("CoachID"=>1017, "Name"=>"Coach Name"))->last_id();
+// $id = $db->select("apps")->insert(
+                                // array(  "time"=>new MongoDate(), 
+                                        // "Description"=>"App Now",
+                                        // 'parent'=>$cid 
+                                        // )
+                                 // )
+                                // ->last_id();
+// $id = $db->select("apps")->insert(
+                                // array(  "time"=>new MongoDate(), 
+                                        // "Description"=>"App Now Again",
+                                        // 'parent'=>$cid 
+                                        // )
+                                 // )
+                                // ->last_id();
+                                
+$res = $db->select('apps')->find(array('parent'=>new MongoId('53049b63f3596fb811000004')))->result();
 echo "<pre>";
-var_dump($result);
+var_dump($res);
 echo "</pre>";
-
+die();
 //modify our little record
 $db->findAndModify(array('_id'=>$id), array("title"=>"New Title"));
 
@@ -39,7 +49,7 @@ echo "</pre>";
 
 
 //remove all from the last selected collection
-$db->remove();
+//$db->remove();
 echo "REMOVED?". $db->count();
 
 

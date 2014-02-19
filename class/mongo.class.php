@@ -43,9 +43,9 @@ class Mongo{
      * @param $data array
      * @return $this
      */
-    public function insert($data){
+    public function insert($data, $opts = array()){
         $data['_id'] = new \MongoId();
-        $this->collection->insert($data, array("w" => 1));//use w to avoid identical inserts
+        $this->collection->insert($data, array_merge($opts, array("w" => 1)));//use w to avoid identical inserts
         $this->last_insert = $data['_id'];
         return $this;
     }
@@ -81,10 +81,22 @@ class Mongo{
     
     /**
      * performs a collection select
+     * @param $collection string
      * @return $this
      */
-    public function select($table){
-        $this->collection = $this->db->$table;
+    public function select($collection){
+        $this->collection = $this->db->$collection;
+        return $this;
+    }
+    
+    /**
+     * 
+     * performs a subcollection select
+     * @param $collection
+     * @return $this
+     */
+    public function subselect($collection){
+        $this->collection = $this->collection->$collection;
         return $this;
     }
     
