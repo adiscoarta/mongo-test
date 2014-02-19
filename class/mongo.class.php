@@ -117,6 +117,19 @@ class Mongo{
         return $this;
     }
     
+    private function update_array($select = array(), $opts = array()){
+        $this->result = $this->collection->update($select, $opts);
+        return $this;
+    }
+    
+    public function addToSet($select = array(), $addToSet){
+        return $this->update_array($select, array('$addToSet'=>$addToSet));
+    }
+    
+    public function push($select = array(), $push){
+        return $this->update_array($select, array('$push'=>$push));
+    }
+    
     /**
      * performs a collection select
      * @param $collection string

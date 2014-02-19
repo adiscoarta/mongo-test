@@ -15,29 +15,45 @@ $mdb = new \Database\MySqli($config['mysql']['hostbase'],
                             $config['mysql']['database']);
                             
 //DO A LITTLE MONGO TEST
+//clean the test collection first
+$db->select('apps')->remove();
 
-// $cid = $db->select("apps")->insert(array("CoachID"=>1017, "Name"=>"Coach Name"))->last_id();
-// $id = $db->select("apps")->insert(
-                                // array(  "time"=>new MongoDate(), 
-                                        // "Description"=>"App Now",
-                                        // 'parent'=>$cid 
-                                        // )
-                                 // )
-                                // ->last_id();
-// $id = $db->select("apps")->insert(
-                                // array(  "time"=>new MongoDate(), 
-                                        // "Description"=>"App Now Again",
-                                        // 'parent'=>$cid 
-                                        // )
-                                 // )
-                                // ->last_id();
-                                
-$res = $db->select('apps')->find(array('parent'=>new MongoId('53049b63f3596fb811000004')))->result();
+
+//create a dummy coach
+$id = $db->select('apps')->insert(array("Coach"=>"Le Coach",  "apps"=>array()))->last_id();
+
+
+//add some refs into an array
+for($x = 0; $x<10; $x++){
+    //push no matter what
+    $update =  array('apps'=>array(
+                                    "title" => 'APP '.$x, 
+                                    "le_id"=>$x)
+                        );
+              
+    $db->select('apps')->push(array('_id'=>$id), $update);
+    //add to set if it doesn't exists
+    if($x>4){
+        $update =  array('apps'=>array(
+                                        "title" => 'APP with add to set '.$x, 
+                                        "le_id"=>$x)
+                        );
+                        
+        
+        $db->select('apps')->addToSet(array('_id'=>$id), $update);
+    }
+
+}
+
+//do we have what we want?
+$res = $db->select('apps')->find()->result();
 
 echo "<pre>";
 var_dump($res);
 echo "</pre>";
 die();
+
+
 //modify our little record
 $db->findAndModify(array('_id'=>$id), array("title"=>"New Title"));
 
