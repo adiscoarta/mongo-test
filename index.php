@@ -33,6 +33,7 @@ $mdb = new \Database\MySqli($config['mysql']['hostbase'],
                                 // ->last_id();
                                 
 $res = $db->select('apps')->find(array('parent'=>new MongoId('53049b63f3596fb811000004')))->result();
+
 echo "<pre>";
 var_dump($res);
 echo "</pre>";

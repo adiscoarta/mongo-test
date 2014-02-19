@@ -79,6 +79,44 @@ class Mongo{
         return $this->collection->count();
     }
     
+    
+    /**
+     * sort a result set by something
+     * @param $sort array to sort by
+     * @return $this
+     */
+    public function sort($sort = array()){
+        $this->result = $this->result->sort($sort);
+        return $this;
+    }
+    
+    /**
+     * limit the query subset
+     * @param $skip int default 0
+     * @param $set int default 30
+     * @return $this
+     */
+    public function limit($skip = 0, $set = 30){
+        if($skip > 0)
+            $this->result = $this->result->limit($set)->skip($skip);
+        else{
+            $this->result = $this->result->limit($set);
+        }
+        return $this;
+    }
+    
+    /**
+     * update a subset based on a rule
+     * @param $select array to select by
+     * @param $set array fields to set
+     * @return $this
+     */
+     
+    public function update($select = array(), $set = array()){
+        $this->result = $this->collection->update($select, array('$set'=>$set));
+        return $this;
+    }
+    
     /**
      * performs a collection select
      * @param $collection string
