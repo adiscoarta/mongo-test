@@ -24,6 +24,7 @@ trait TraitAppointmentBase{//base and available with everyone
         $base['lastUpdated'] = $this->lastUpdated;
         $base['calendarID'] = $this->calendarID;
         $base['appType'] = $this->appType;
+        $base['coachID'] = $this->coachID;
         return $base;
     }
     
@@ -46,13 +47,7 @@ trait TraitAppointmentBase{//base and available with everyone
     }
     
     public function setCoachID($coachID){
-        $this->parentID = $coachID;
-    }
-    
-    public function unwind($array){
-        foreach($array as $key=>$value){
-            $this->$key = $value;
-        }
+        $this->coachID = $coachID;
     }
     
     abstract public function translate();
@@ -126,10 +121,30 @@ trait TraitAppointmentGroup{ //with group
     public function setGroupID($groupID){
         $this->groupID = $groupID;
     }
+
+    public function translate(){
+        $base = $this->uptranslate();
+        $base['groupID'] = $this->groupID;
+        return $base;
+    }
 }
 
+/**
+ * transpose an associative array in object properties
+ */
 
-
+trait TraitArrayTranspose{
+    
+    public function unwind($array){
+        if(count($array)){
+            foreach($array as $key=>$value){
+                $this->$key = $value;
+            }
+        }
+    }
+    
+}
+ 
 /**
  * SINGLETON
  */

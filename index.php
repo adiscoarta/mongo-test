@@ -1,11 +1,18 @@
 <?php
-
+set_time_limit(0);
 include("config.php");
+//traits and schemes
 require_once("objects/traits.php");
 require_once("objects/schemes.php");
+//base classes
 require_once("class/mongo.class.php");
 require_once("class/mysqli.class.php");
+//objects
 require_once("objects/appointment.object.php");
+require_once("objects/client.object.php");
+require_once("objects/group.object.php");
+
+//instantiate mongo and mysql wrappers
 
 $db = new \Database\Mongo(  $config['mongo']['hostbase'], 
                             $config['mongo']['username'], 
@@ -18,15 +25,11 @@ $mdb = new \Database\MySqli($config['mysql']['hostbase'],
                             $config['mysql']['database']);
                             
 
-echo new MongoId(1017);
-sleep(1);
-echo "<br/>";
-echo new MongoId(1017);
-die();
-                            
-//DO A LITTLE MONGO TEST
+
 //clean the test collection first
-//$db->select('coaches')->remove();
+// $db->select('coaches')->remove();
+// $db->select('clients')->remove();
+// $db->select('appointments')->remove();
 
 if(isset($_GET['limit'])){
 //get coaches from mysql
@@ -48,13 +51,13 @@ if(isset($_GET['limit'])){
     foreach($res as $coach){
         $data = array();
        
-        $data['_id'] = new MongoId($coach->CoachID);
+        $data['_id'] = new MongoId();
         foreach($fields as $field){
-            $data[$field] = $coach->$field;
+            $data[$field] = utf8_encode($coach->$field);
         }
         
         foreach($address as $a){
-            $data['address'][$a] = $coach->$a;  
+            $data['address'][$a] = utf8_encode($coach->$a);  
         }
         
         foreach($contact as $c){
@@ -76,19 +79,79 @@ if(isset($_GET['limit'])){
     }
     
     
-    //get the apps for inserted coaches
     $ids = implode(",", $coach_ids);
+    echo $ids;
+    //get the clients
+    $clients_arr = array();
+    $clients = $mdb->query("SELECT * FROM clients WHERE CoachID IN({$ids}) AND IsDeleted='N'")->fetch();
+    
+    foreach($clients as $client){
+        $data = array();
+        $data['clientID'] = $client->ClientID;
+        $data['Created'] = new MongoDate(strtotime($client->Created));
+        $data['FirstName'] = utf8_encode($client->FirstName);
+        $data['MiddleName'] = utf8_encode($client->MiddleName);
+        $data['LastName'] = utf8_encode($client->LastName);
+        $data['address'] = array(
+            "Address"=>utf8_encode($client->Address),
+            "AddressExtended"=>utf8_encode($client->AddressExtended),
+            "City"=>utf8_encode($client->City),
+            "State"=>utf8_encode($client->State),
+            "PostalCode"=>$client->PostalCode,
+            "Country"=>utf8_encode($client->Country)
+        );
+        $data['Active'] = $client->Active;
+        $data['coachID'] = $coaches[$client->CoachID];
+        $cli = new Client($data);
+        $clients_arr[$client->ClientID] = $db->select('clients')->insert($data)->last_id();
+    }
+    
+    //get the groups
+    $groups = $mdb->query("SELECT * FROM groups WHERE CoachID IN({$ids})")->fetch();
+    
+    $groups_arr = array();
+    if(count($groups)){
+        
+        foreach($groups as $gr){
+            $data = array();    
+            $data['GroupName'] = utf8_encode($gr->GroupName);
+            $data['_id'] = new MongoId();
+            $data['groupID'] = $gr->GroupID;
+            $push = array('groups'=>$data);
+            $db->select('coaches')->push(array('_id'=>$coaches[$gr->CoachID]), $push);
+            $groups_arr[$gr->GroupID] = $data['_id'];
+            
+            //assign the clients to this group
+            $assigned = $mdb->query("SELECT * FROM client_groups WHERE GroupID=".$gr->GroupID)->fetch();
+            if(count($assigned)){
+                foreach($assigned as $a){
+                    $push = array('groups'=>$groups_arr[$a->GroupID]);
+                    if(isset($clients_arr[$a->ClientID])){
+                        $db->select('clients')->push(array('_id'=>$clients_arr[$a->ClientID]), $push);
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    //get the apps for inserted coaches
     $apps = $mdb->query("SELECT * FROM appointments WHERE CoachID IN({$ids})")->fetch();
-    echo count($apps)."<br/>";
+    echo "<br/>".count($apps)."<br/>";
     
     //all apps implement this properties
     $prop = "appointmentID,start,duration,stop,title,created,lastUpdated,appType";
     $prop = explode(",", $prop);
     
+    $clients = array();
+    $groups = array();
+    
     foreach($apps as $a){
         
         $fields = array();
-        $fields['appointmentID'] = new MongoId($a->AppointmentID);
+        $app = null;
+        
+        $fields['appointmentID'] = $a->AppointmentID;
         
         $fields['appType'] = $a->AppointmentType;
         $start = new MongoDate(strtotime($a->Start));
@@ -98,35 +161,47 @@ if(isset($_GET['limit'])){
         $fields['lastUpdated'] = new MongoDate(strtotime($a->LastUpdated));
         $fields['status'] = $a->Status;
         $fields['calendarID'] = $a->CalendarID;
+        $fields['title'] = utf8_encode($a->Title);
         
-        if($a->ClientID > 0){
+        if($a->ClientID > 0 && isset($clients_arr[$a->ClientID])){
             $app = new AppointmentClient($fields);
-            $app->setClientID(new MongoId($a->ClientID)); 
-        }else if($a->GroupID > 0){
+            $app->setClientID($clients_arr[$a->ClientID]); 
+        }else if($a->GroupID > 0 && isset($groups_arr[$a->GroupID])){
             $app = new AppointmentGroup($fields);    
-            $app->setGroupID(new MongoId($a->GroupID));
+            $app->setGroupID($groups_arr[$a->GroupID]);
         }else if($a->AppointmentType == 1){
             $app = new AppointmentNeither($fields);
         }else{
             $app = new AppointmentAvailable($fields);
+            if($app->appFor == AppointmentAvailable::APP_GROUP){
+                echo $a->AppointmentID." ". $a->AppFor." ". $groups_arr[$a->GroupFor];
+                $app->setAvailability($a->AppFor, $groups_arr[$a->GroupFor]);
+            }else{
+                $app->setAvailability($a->AppFor);
+            }
         }
-        echo $a->CoachID;
-        $app->setCoachID(new MongoId($coaches[$a->CoachID]));
-        $app->setInterval($start, $duration);
-        $db->commitObject($app->save());
+        if($app !== null){
+            $app->setCoachID($coaches[$a->CoachID]);
+            $app->setInterval($start, $duration);
+            $db->commitObject($app->save());
+        }
         
     }
 
-    die();
 }
 
-$apps = $db->select('coaches')->findOne(array('_id'=>new MongoId('530708b3f3596fd83a000243'), 'apps.appType'=>2), array("apps"=>true));
-echo count($apps);
+$res = $db->select("clients")->find(
+                                array(
+                                    'groups'=>
+                                        array(
+                                            '$all'=>
+                                                array(new MongoId("530743d5f3596fa43e002b56"))
+                                                )
+                                        )
+                                 )->result();
 echo "<pre>";
-print_r($apps);
+var_dump($res);
 echo "</pre>";
-
-
 die();
 //create a new Available Appointment
 $app = new AppointmentAvailable();

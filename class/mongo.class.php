@@ -34,10 +34,13 @@ class Mongo{
     public function insert($data, $opts = array()){
             
         $data['_id'] = (!isset($data['_id']))? new \MongoId() : $data['_id'];
-        
-        $this->collection->insert($data, array_merge($opts, array("w" => 1)));//use w to avoid identical inserts
-        $this->last_insert = $data['_id'];
-        return $this;
+        try{
+            $this->collection->insert($data, array_merge($opts, array("w" => 1)));//use w to avoid identical inserts
+            $this->last_insert = $data['_id'];
+            return $this;
+        }catch(\Exception $e){
+            echo "INSERT ERROR". $e->getMessage()." ".$e->getCode();
+        }
     }
     
     /**
@@ -66,7 +69,7 @@ class Mongo{
      * @return int
      */
     public function count(){
-        return $this->collection->count();
+        return $this->result->count();
     }
     
     
@@ -211,6 +214,9 @@ class Mongo{
                 $e .= $obj->validationScheme."::".$error["scheme"]."::".$error["error"]."<br/>";
             }
             trigger_error("Object did not validate against the schema: <br/>".$e, E_USER_WARNING);
+            echo "<pre>";
+            print_r($obj->elements);
+            echo "</pre>";
             return $this;
             
         }
@@ -233,10 +239,6 @@ class Mongo{
         if($selector != false && isset($obj->memberOf)){
             //we need to insert this item in an array that is part of a collection
             $addToSet = array($obj->memberOf=>$obj->elements);
-            echo "<pre>";
-            var_dump($addToSet);
-            echo "</pre>";
-            print_r($selector);
             return $this->addToSet($selector, $addToSet);
         
         }else if($selector != false){

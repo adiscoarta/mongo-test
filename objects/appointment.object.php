@@ -3,12 +3,10 @@
 //base appointment
 class Appointment{
     
-    use MongoAppointmentScheme;
+    use MongoAppointmentScheme, TraitArrayTranspose;
     
     public function __construct($array = array()){
-       if(count($array)){
-           $this->unwind($array);
-       }
+       $this->unwind($array);
        $this->appType = $this->appType();
     }    
     
@@ -37,8 +35,9 @@ class AppointmentAvailable extends Appointment{
         $this->appFor = self::APP_AVAILABLE;
     }
     
-    public function setAvailability($type = self::APP_AVAILABLE){
+    public function setAvailability($type = self::APP_AVAILABLE, $group = 0){
         $this->appFor = $type;
+        $this->groupFor = $group;
     }
 
 }

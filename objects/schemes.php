@@ -56,9 +56,7 @@ trait MongoAppointmentScheme{
     use BaseScheme;
       
     public $validationScheme = "MongoAppointmentScheme";
-    public $collection = 'coaches';
-    public $memberOf = 'apps';
-    public $parentID = -1;
+    public $collection = 'appointments';
     
     private function baseScheme(){
         
@@ -90,13 +88,13 @@ trait MongoAppointmentScheme{
     }
     
     private function clientScheme(){
-        if($this->elements['clientID'] === null || $this->elements['clientID'] === ''){
+        if(!isset($this->elements['clientID']) || $this->elements['clientID'] === null || $this->elements['clientID'] === ''){
             $this->setValidationError('clientScheme', 'Appointment has no Client ID defined');
         }
     }
     
     private function groupScheme(){
-        if($this->elements['groupID'] === null || $this->elements['groupID'] === ''){
+        if(!isset($this->elements['groupID']) || $this->elements['groupID'] === null || $this->elements['groupID'] === ''){
             $this->setValidationError('groupScheme', 'Appointment has no Group ID defined');
         }
         
