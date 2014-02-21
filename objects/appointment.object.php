@@ -1,48 +1,62 @@
 <?php
 
-require_once("objects/traits.php");
-
-
 //base appointment
 class Appointment{
     
-    private $appType;    
-        
-    public function __construct(){
+    use MongoAppointmentScheme;
+    
+    public function __construct($array = array()){
+       if(count($array)){
+           $this->unwind($array);
+       }
        $this->appType = $this->appType();
     }    
     
     public function sayAppType(){
-        echo "<pre>";
-        var_dump($this);
-        echo "</pre>";
+        
+    }
+    
+    public function save(){
+        $this->validate($this->translate());
+        return $this;//allow chaining
     }
 
 }
 
 //available Appointment
 class AppointmentAvailable extends Appointment{
-    use TraitAppointmentAvailable,TraitAppointmentBase;
+    use TraitAppointmentAvailable;
+
+    const APP_AVAILABLE = 0; //enum, 0 everyone, 1 sample session, 2 active clients, 3 a specific group;
+    const APP_SAMPLE = 1;
+    const APP_ACTIVE = 2;
+    const APP_GROUP = 3;
+    
+    public function __construct(){
+        parent::__construct();
+        $this->appFor = self::APP_AVAILABLE;
+    }
+    
+    public function setAvailability($type = self::APP_AVAILABLE){
+        $this->appFor = $type;
+    }
+
 }
 
 //app with client
 class AppointmentClient extends Appointment{
-    use TraitAppointmentClient,TraitAppointmentNeither,TraitAppointmentBase{
-        TraitAppointmentNeither::appType insteadof TraitAppointmentBase;
-    }
+    use TraitAppointmentClient;
+    public $appWithClient = 1;
 }
 
 //app with neither
 class AppointmentNeither extends Appointment{
-    use TraitAppointmentNeither,TraitAppointmentBase{
-        TraitAppointmentNeither::appType insteadof TraitAppointmentBase;
-    }
+    use TraitAppointmentNeither;
 }
 
 //app with group
 class AppointmentGroup extends Appointment{
-    use TraitAppointmentGroup,TraitAppointmentNeither,TraitAppointmentBase{
-        TraitAppointmentNeither::appType insteadof TraitAppointmentBase;
-    }
+    use TraitAppointmentGroup;
+    public $appWithGroup = 1;
 
 }

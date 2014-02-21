@@ -7,12 +7,13 @@ namespace Database;
 
 class Mongo{
      
-    private static $instance;
     private $db;
     private $collection;
     private $query;
     private $result;
     private $last_insert;
+    
+    use \Singleton;
     
     public function __construct($host, $user, $pwd, $db){
         try{
@@ -24,27 +25,16 @@ class Mongo{
             die();
         }
     }
-    
-    public static function getInstance()  
-    {  
-        if (NULL === self::$instance)
-            self::$instance = new self();
-        return self::$instance;          
-    }  
-      
-    public function __clone()  
-    {  
-        throw new \Exception("Cloning is not permited");  
-    }
-    
-    
+
     /**
      * insert a new doc in the collection
      * @param $data array
      * @return $this
      */
     public function insert($data, $opts = array()){
-        $data['_id'] = new \MongoId();
+            
+        $data['_id'] = (!isset($data['_id']))? new \MongoId() : $data['_id'];
+        
         $this->collection->insert($data, array_merge($opts, array("w" => 1)));//use w to avoid identical inserts
         $this->last_insert = $data['_id'];
         return $this;
@@ -154,11 +144,12 @@ class Mongo{
     /**
      * search a collection
      * @param $params array fields to search by
-     * @return $this
+     * @return row
      */
-    public function findOne($params = array()){
-        $this->result =  $this->collection->findOne($params);
-        return $this;
+    public function findOne($params = array(), $fields = array()){
+        return count($fields)? $this->collection->findOne($params, $fields) : $this->collection->findOne($params);
+        
+        
     }
     
     /**
@@ -193,5 +184,69 @@ class Mongo{
     public function remove($params=array()){
         $this->collection->remove($params);
         return $this;
+    }
+    
+    /**
+     * insert or update object. The object itself must be save()-d before use
+     * @param $obj the object to insert
+     */
+    public function commitObject($obj, $select_rule = null){
+            
+        $reflection = new \ReflectionClass($obj);
+        
+        if(!$reflection->hasProperty('elements') || !$reflection->hasMethod('setValidationError') || !$reflection->hasMethod('getValidationError')){
+            trigger_error("Object does not implement the Validation Scheme or it has not been saved!", E_USER_WARNING);
+            return $this;
+        }
+        
+        if(!count($obj->elements)){
+            trigger_error("Object has not been saved or is empty.", E_USER_WARNING);
+            return $this;
+        }
+        
+        
+        if($obj->hasValidationErrors()){
+            $e = '';
+            while($error = $obj->getValidationError()){
+                $e .= $obj->validationScheme."::".$error["scheme"]."::".$error["error"]."<br/>";
+            }
+            trigger_error("Object did not validate against the schema: <br/>".$e, E_USER_WARNING);
+            return $this;
+            
+        }
+        
+        if(isset($obj->memberOf) && !isset($obj->parentID)){
+            trigger_error("Object should be an array member of {$obj->memberOf} but you haven't declared it's parentID: <br/>", E_USER_WARNING);
+            return $this;
+        }
+        
+        $selector = false;
+        
+        if((isset($obj->parentID) || $select_rule !== null)){
+            $selector = $select_rule !== null ? $select_rule : array('_id'=>$obj->parentID);
+        }
+        
+        if(isset($obj->collection)){
+            $this->select($obj->collection);
+        }
+        
+        if($selector != false && isset($obj->memberOf)){
+            //we need to insert this item in an array that is part of a collection
+            $addToSet = array($obj->memberOf=>$obj->elements);
+            echo "<pre>";
+            var_dump($addToSet);
+            echo "</pre>";
+            print_r($selector);
+            return $this->addToSet($selector, $addToSet);
+        
+        }else if($selector != false){
+            //we need to update the object in a collection
+            return $this->update($selector, $obj->elements);
+        
+        }else{
+            // just insert in whatever collection was previously selected
+            return $this->insert($obj->elements);    
+        }
+        
     }
  }

@@ -4,25 +4,16 @@ namespace Database;
 
 class MySqli{
     
-    private static $instance;
     private $db;
     private $query;
     
+    
+    use \Singleton;
+        
     public function __construct($host, $user, $pwd, $db){
         $this->db = new \mysqli($host, $user, $pwd, $db) or die('Couldn\'t connect');
     }
     
-    public static function getInstance()  
-    {  
-        if (NULL === self::$instance)
-            self::$instance = new self();
-        return self::$instance;          
-    }  
-      
-    public function __clone()  
-    {  
-        throw new \Exception("Cloning is not permited");  
-    }
     
     public function query($sql){
         $this->query = $this->db->query($sql);
